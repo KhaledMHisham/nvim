@@ -121,16 +121,37 @@ return {
                 name_to_layout[name].index = #layouts
             end
 
-            local function toggle_debug_ui(name)
-                dapui.close()
-                local layout_config = name_to_layout[name]
+            -- Track the open state of each layout
+            local open_layouts = {}
 
+            local function toggle_debug_ui(name)
+                local layout_config = name_to_layout[name]
                 if layout_config == nil then
                     error(string.format("bad name: %s", name))
                 end
-                pcall(dapui.toggle, layout_config.index)
-            end
 
+                -- Check if this specific layout is currently open
+                if open_layouts[name] then
+                    -- If it's open, close it
+                    dapui.close(layout_config.index)
+                    open_layouts[name] = false
+                else
+                    -- Close any other open layouts first
+                    for open_name, is_open in pairs(open_layouts) do
+                        if is_open and open_name ~= name then
+                            local other_config = name_to_layout[open_name]
+                            dapui.close(other_config.index)
+                            open_layouts[open_name] = false
+                        end
+                    end
+
+                    -- Then open the requested layout
+                    vim.defer_fn(function()
+                        dapui.open(layout_config.index)
+                        open_layouts[name] = true
+                    end, 10)
+                end
+            end
             vim.keymap.set("n", "<leader>dr", function() toggle_debug_ui("repl") end, { desc = "Debug: toggle repl ui" })
             vim.keymap.set("n", "<leader>ds", function() toggle_debug_ui("stacks") end,
                 { desc = "Debug: toggle stacks ui" })
