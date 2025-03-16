@@ -21,11 +21,24 @@ return {
                 lua = { "stylua" },
                 rust = { "rustfmt", lsp_format = "fallback" },
             },
-            format_on_save = {
-                timeout_ms = 500,
-                lsp_format = "fallback",
-            },
         })
+
+        vim.api.nvim_create_user_command("Format", function(args)
+            local range = nil
+            if args.count ~= -1 then
+                local end_line = vim.api.nvim_buf_get_lines(0, args.line2 - 1, args.line2, true)[1]
+                range = {
+                    start = { args.line1, 0 },
+                    ["end"] = { args.line2, end_line:len() },
+                }
+            end
+            require("conform").format({ async = true, lsp_format = "fallback", range = range })
+        end, { range = true })
+
+        vim.keymap.set('n', '<leader>f', ':Format<CR>', { desc = "Format entire buffer", noremap = true, silent = true })
+        vim.keymap.set('v', '<leader>f', ':Format<CR>', { desc = "Format selection", noremap = true, silent = true })
+
+
         require("fidget").setup({})
 
         local cmp = require('cmp')
@@ -43,7 +56,7 @@ return {
                 "rust_analyzer"
             },
             handlers = {
-                function(server_name)     -- default handler (optional)
+                function(server_name) -- default handler (optional)
                     require("lspconfig")[server_name].setup {
                         capabilities = capabilities
                     }
@@ -130,7 +143,7 @@ return {
         cmp.setup({
             snippet = {
                 expand = function(args)
-                    require('luasnip').lsp_expand(args.body)     -- For `luasnip` users.
+                    require('luasnip').lsp_expand(args.body) -- For `luasnip` users.
                 end,
             },
             mapping = cmp.mapping.preset.insert({
@@ -142,7 +155,7 @@ return {
             sources = cmp.config.sources({
                 { name = "copilot", group_index = 2 },
                 { name = 'nvim_lsp' },
-                { name = 'luasnip' },     -- For luasnip users.
+                { name = 'luasnip' }, -- For luasnip users.
             }, {
                 { name = 'buffer' },
             })
